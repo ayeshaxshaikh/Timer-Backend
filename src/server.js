@@ -12,30 +12,41 @@ const io = new Server(server, {
   },
 });
 
+// Store timer states in memory
 const timers = {}; 
 
+// Timer functions
 const startTimer = (roomId) => {
-  if (timers[roomId]?.isRunning) return;
+  if (!timers[roomId]) {
+    timers[roomId] = { time: 15, isRunning: false };
+  }
+
+  if (timers[roomId].isRunning) return;
 
   timers[roomId].isRunning = true;
 
   timers[roomId].interval = setInterval(() => {
     if (timers[roomId].time > 0) {
       timers[roomId].time--;
+      io.to(roomId).emit('timerUpdate', timers[roomId].time);
     } else {
       timers[roomId].time = 0;
       timers[roomId].isRunning = false;
       clearInterval(timers[roomId].interval);
+      io.to(roomId).emit('timerUpdate', timers[roomId].time);
     }
-    io.to(roomId).emit('timerUpdate', timers[roomId].time); 
   }, 1000);
 };
 
 const resetTimer = (roomId) => {
+  if (!timers[roomId]) {
+    timers[roomId] = { time: 15, isRunning: false };
+  }
+
   clearInterval(timers[roomId].interval);
   timers[roomId].time = 15;
   timers[roomId].isRunning = false;
-  io.to(roomId).emit('timerUpdate', timers[roomId].time); 
+  io.to(roomId).emit('timerUpdate', timers[roomId].time);
 };
 
 io.on('connection', (socket) => {
@@ -47,8 +58,7 @@ io.on('connection', (socket) => {
     if (!timers[roomId]) {
       timers[roomId] = { time: 15, isRunning: false };
     }
-
-    socket.emit('timerUpdate', timers[roomId].time);
+    socket.emit('timerStateUpdate', timers[roomId]);
   });
 
   socket.on('startTimer', (roomId) => {
@@ -61,10 +71,19 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('A user disconnected');
+    for (const roomId in timers) {
+      if (timers[roomId].interval) {
+        clearInterval(timers[roomId].interval);
+        delete timers[roomId]; 
+      }
+    }
   });
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Unexpected error:', error);
 });
 
 server.listen(3000, () => {
   console.log('Server is running on port 3000');
 });
-

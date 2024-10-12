@@ -2,18 +2,20 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "src/server.js", 
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js", 
-    "build": "echo 'No build step needed'" 
+    "start": "node src/server.js",
+    "build": "echo 'No build step needed'"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.0",
-    "socket.io": "^4.8.0"
-  },
-  "devDependencies": {}
+    "mongoose": "^8.7.1",
+    "nanoid": "^5.0.7",
+    "socket.io": "^4.8.0",
+    "uuid": "^10.0.0"
+  }
 }
