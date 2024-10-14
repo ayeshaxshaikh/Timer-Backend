@@ -2,6 +2,8 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import mongoose from 'mongoose';
+import cors from 'cors';
 
 const app = express();
 const server = createServer(app);
@@ -12,8 +14,47 @@ const io = new Server(server, {
   },
 });
 
-// Store timer states in memory
-const timers = {}; 
+app.use(cors()); 
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/timer');
+
+// Timer schema
+const timerSchema = new mongoose.Schema({
+  uniqueId: { type: String, required: true },
+  time: { type: Number, default: 15 },
+  isRunning: { type: Boolean, default: false },
+});
+
+const TimerModel = mongoose.model('Timer', timerSchema);
+
+// Endpoint to create a new timer with a unique ID
+app.post('/createTimer', async (req, res) => {
+  const uniqueId = `tm-${Math.random().toString(36).substr(2, 3)}`;
+  const newTimer = new TimerModel({ uniqueId });
+  
+  try {
+    await newTimer.save();
+    res.json({ uniqueId });
+  } catch (error) {
+    console.error('Error saving timer:', error);
+    res.status(500).send('Error creating timer');
+  }
+});
+
+
+// Endpoint to get timer state by unique ID
+app.get('/timer/:id', async (req, res) => {
+  const { id } = req.params;
+  const timerData = await TimerModel.findOne({ uniqueId: id });
+  if (timerData) {
+    res.json(timerData);
+  } else {
+    res.status(404).send('Timer not found');
+  }
+});
+
+const timers = {};
 
 // Timer functions
 const startTimer = (roomId) => {
@@ -54,7 +95,6 @@ io.on('connection', (socket) => {
 
   socket.on('joinRoom', (roomId) => {
     socket.join(roomId);
-
     if (!timers[roomId]) {
       timers[roomId] = { time: 15, isRunning: false };
     }
